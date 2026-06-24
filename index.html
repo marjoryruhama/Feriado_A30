@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Filtro Cluster A30 – SSP5</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+header{background:linear-gradient(135deg,#1e3a5f,#162032);border-bottom:2px solid #FFE000;padding:20px 32px;display:flex;align-items:center;gap:16px}
+.logo-badge{background:#FFE000;color:#1e3a5f;font-weight:800;font-size:18px;padding:6px 14px;border-radius:6px;letter-spacing:1px}
+header h1{font-size:20px;font-weight:700;color:#fff}
+header p{font-size:13px;color:#94a3b8;margin-top:2px}
+main{max-width:1200px;margin:32px auto;padding:0 24px}
+
+.upload-zone{border:2px dashed #334155;border-radius:12px;padding:48px 24px;text-align:center;cursor:pointer;transition:all .2s;background:#161b27;margin-bottom:28px;position:relative}
+.upload-zone:hover,.upload-zone.drag-over{border-color:#FFE000;background:#1a2030}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{font-size:48px;margin-bottom:12px}
+.upload-zone h2{font-size:18px;color:#cbd5e1}
+.upload-zone p{font-size:13px;color:#64748b;margin-top:6px}
+
+.rules-panel{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+.rule-card{background:#161b27;border:1px solid #1e293b;border-radius:10px;padding:18px 20px}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px;letter-spacing:.5px}
+.tag-f1{background:#7c3aed33;color:#a78bfa;border:1px solid #7c3aed55}
+.tag-f2{background:#0ea5e933;color:#38bdf8;border:1px solid #0ea5e955}
+.rule-card h3{font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:10px}
+.rule-row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #1e293b}
+.rule-row:last-child{border-bottom:none}
+.rule-row .col{color:#94a3b8}
+.rule-row .val{color:#FFE000;font-weight:600}
+
+.stats-bar{display:none;background:#161b27;border:1px solid #1e293b;border-radius:10px;padding:16px 24px;margin-bottom:20px;gap:32px;align-items:center;flex-wrap:wrap}
+.stats-bar.visible{display:flex}
+.stat-item{text-align:center}
+.stat-item .num{font-size:26px;font-weight:700;color:#FFE000}
+.stat-item .lbl{font-size:11px;color:#64748b;margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+.stat-divider{width:1px;height:40px;background:#1e293b}
+
+.actions{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.btn{padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:#FFE000;color:#1e3a5f}
+.btn-primary:hover:not(:disabled){background:#ffd000}
+.btn-outline{background:transparent;border:1px solid #334155;color:#94a3b8}
+.btn-outline:hover:not(:disabled){border-color:#FFE000;color:#FFE000}
+
+.tabs{display:flex;gap:6px;margin-left:auto}
+.tab-btn{padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #334155;background:transparent;color:#64748b;transition:all .15s}
+.tab-btn.active-all{background:#FFE00022;border-color:#FFE000;color:#FFE000}
+.tab-btn.active-f1{background:#7c3aed22;border-color:#7c3aed;color:#a78bfa}
+.tab-btn.active-f2{background:#0ea5e922;border-color:#0ea5e9;color:#38bdf8}
+
+.table-wrap{background:#161b27;border:1px solid #1e293b;border-radius:10px;overflow:hidden;display:none}
+.table-wrap.visible{display:block}
+.table-header{padding:14px 20px;border-bottom:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between}
+.table-header h3{font-size:14px;font-weight:600}
+.table-header span{font-size:12px;color:#64748b}
+.table-scroll{overflow-x:auto;max-height:450px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead{position:sticky;top:0;z-index:1}
+thead th{background:#0d1117;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px;text-align:left;white-space:nowrap;border-bottom:1px solid #1e293b}
+tbody tr{border-bottom:1px solid #0f1117}
+tbody tr:hover{background:#1a2030}
+tbody td{padding:9px 14px;color:#cbd5e1;white-space:nowrap}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.b-f1{background:#7c3aed33;color:#a78bfa}
+.b-f2{background:#0ea5e933;color:#38bdf8}
+.b-sim{background:#7c3aed33;color:#a78bfa}
+.b-nao{background:#0f172a;color:#475569;border:1px solid #334155}
+.b-business{background:#0ea5e933;color:#38bdf8}
+.b-am{background:#FFE00022;color:#FFE000}
+
+.loading{display:none;align-items:center;gap:12px;color:#64748b;font-size:13px;padding:12px 0}
+.loading.visible{display:flex}
+.spinner{width:18px;height:18px;border:2px solid #1e293b;border-top-color:#FFE000;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.alert{background:#ef444433;border:1px solid #ef444455;border-radius:8px;padding:12px 16px;font-size:13px;color:#fca5a5;margin-bottom:16px;display:none}
+.alert.visible{display:block}
+
+@media(max-width:640px){.rules-panel{grid-template-columns:1fr}.tabs{margin-left:0}.actions{flex-direction:column;align-items:stretch}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo-badge">ML</div>
+  <div>
+    <h1>Filtro Cluster A30 — SSP5</h1>
+    <p>Segregação de pacotes roteirizáveis por regras de negócio</p>
+  </div>
+</header>
+<main>
+
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept=".csv"/>
+    <div class="upload-icon">📂</div>
+    <h2>Arraste seu CSV aqui ou clique para selecionar</h2>
+    <p>Base Roteirizável SSP5 – MODELO V2_8</p>
+  </div>
+
+  <div class="rules-panel">
+    <div class="rule-card">
+      <span class="tag tag-f1">FILTRO 1 – REVERTER = SIM</span>
+      <h3>Pacotes para Reversão</h3>
+      <div class="rule-row"><span class="col">CICLO FINAL</span><span class="val">= AM</span></div>
+      <div class="rule-row"><span class="col">Cluster</span><span class="val">= A30</span></div>
+      <div class="rule-row"><span class="col">Reverter</span><span class="val">= Sim</span></div>
+    </div>
+    <div class="rule-card">
+      <span class="tag tag-f2">FILTRO 2 – BUSINESS / PROMISE</span>
+      <h3>Pacotes Business com Promise ≥ 25/06/2026</h3>
+      <div class="rule-row"><span class="col">CICLO FINAL</span><span class="val">= AM</span></div>
+      <div class="rule-row"><span class="col">Cluster</span><span class="val">= A30</span></div>
+      <div class="rule-row"><span class="col">Reverter</span><span class="val">= Não</span></div>
+      <div class="rule-row"><span class="col">Tipo_Endereco</span><span class="val">= business</span></div>
+      <div class="rule-row"><span class="col">Promise_Date (1ª data)</span><span class="val">≥ 2026-06-25</span></div>
+    </div>
+  </div>
+
+  <div class="loading" id="loading"><div class="spinner"></div><span id="loadingMsg">Processando…</span></div>
+  <div class="alert" id="alertBox"></div>
+
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-item"><div class="num" id="statTotal">0</div><div class="lbl">Total no CSV</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat-item"><div class="num" id="statF1">0</div><div class="lbl">Filtro 1 – Reverter Sim</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat-item"><div class="num" id="statF2">0</div><div class="lbl">Filtro 2 – Business</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat-item"><div class="num" id="statCombined">0</div><div class="lbl">Total Segregados</div></div>
+  </div>
+
+  <div class="actions" id="actionsBar" style="display:none">
+    <button class="btn btn-primary" onclick="exportCSV('all')">⬇️ Exportar F1 + F2 (único CSV)</button>
+    <button class="btn btn-outline" onclick="exportCSV('f1')">⬇️ Só Filtro 1</button>
+    <button class="btn btn-outline" onclick="exportCSV('f2')">⬇️ Só Filtro 2</button>
+    <div class="tabs">
+      <button class="tab-btn active-all" id="tabAll" onclick="setView('all')">Todos</button>
+      <button class="tab-btn" id="tabF1" onclick="setView('f1')">Filtro 1</button>
+      <button class="tab-btn" id="tabF2" onclick="setView('f2')">Filtro 2</button>
+    </div>
+  </div>
+
+  <div class="table-wrap" id="tableWrap">
+    <div class="table-header">
+      <h3 id="tableTitle">Resultados</h3>
+      <span id="tableCount"></span>
+    </div>
+    <div class="table-scroll">
+      <table><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table>
+    </div>
+  </div>
+
+</main>
+<script>
+var allRows=[], filtro1=[], filtro2=[], combined=[], headers=[], currentView='all';
+
+var PREVIEW_COLS=['CICLO FINAL','Id_Unidad','Cluster','Promise_Date','Tipo_Endereco','Reverter','Status','ROUTE_ID','PLACA','CANAL'];
+
+// Upload handlers
+var zone=document.getElementById('uploadZone');
+zone.addEventListener('dragover',function(e){e.preventDefault();zone.classList.add('drag-over')});
+zone.addEventListener('dragleave',function(){zone.classList.remove('drag-over')});
+zone.addEventListener('drop',function(e){e.preventDefault();zone.classList.remove('drag-over');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0])});
+document.getElementById('fileInput').addEventListener('change',function(e){if(e.target.files[0])processFile(e.target.files[0])});
+
+function showLoading(msg){document.getElementById('loading').classList.add('visible');document.getElementById('loadingMsg').textContent=msg}
+function hideLoading(){document.getElementById('loading').classList.remove('visible')}
+function showAlert(msg){var el=document.getElementById('alertBox');el.textContent=msg;el.classList.add('visible')}
+function hideAlert(){document.getElementById('alertBox').classList.remove('visible')}
+
+function firstDate(str){
+  if(!str)return'';
+  return str.toString().split(' - ')[0].trim();
+}
+
+function normalize(str){
+  if(!str)return'';
+  // normalize accented chars for comparison
+  return str.toString().trim().toLowerCase()
+    .replace(/\u00e3o/g,'ao')   // ão -> ao
+    .replace(/\u00e3/g,'a')
+    .replace(/\u00e2/g,'a');
+}
+
+function processFile(file){
+  hideAlert();
+  if(!file.name.toLowerCase().endsWith('.csv')){showAlert('Por favor, selecione um arquivo .csv');return}
+  showLoading('Lendo arquivo CSV…');
+  document.getElementById('statsBar').classList.remove('visible');
+  document.getElementById('tableWrap').classList.remove('visible');
+  document.getElementById('actionsBar').style.display='none';
+
+  Papa.parse(file,{
+    header:true,
+    skipEmptyLines:true,
+    encoding:'UTF-8',
+    complete:function(results){
+      showLoading('Aplicando filtros…');
+      allRows=results.data;
+      headers=results.meta.fields||[];
+
+      var CUTOFF='2026-06-25';
+
+      filtro1=allRows.filter(function(r){
+        var ciclo=(r['CICLO FINAL']||'').trim();
+        var cluster=(r['Cluster']||'').trim();
+        var reverter=normalize(r['Reverter']||'');
+        return ciclo==='AM' && cluster==='A30' && (reverter==='sim');
+      });
+
+      filtro2=allRows.filter(function(r){
+        var ciclo=(r['CICLO FINAL']||'').trim();
+        var cluster=(r['Cluster']||'').trim();
+        var reverter=normalize(r['Reverter']||'');
+        var tipo=normalize(r['Tipo_Endereco']||'');
+        var fd=firstDate(r['Promise_Date']||'');
+        return ciclo==='AM' && cluster==='A30' && (reverter==='nao'||reverter==='n\u00e3o') && tipo==='business' && fd>=CUTOFF;
+      });
+
+      // Tag rows
+      var f1set=new Set(filtro1.map(function(r,i){return i}));
+      combined=[];
+      filtro1.forEach(function(r){combined.push(Object.assign({},r,{__FILTRO:'Filtro 1'}))});
+      filtro2.forEach(function(r){combined.push(Object.assign({},r,{__FILTRO:'Filtro 2'}))});
+
+      document.getElementById('statTotal').textContent=allRows.length.toLocaleString('pt-BR');
+      document.getElementById('statF1').textContent=filtro1.length.toLocaleString('pt-BR');
+      document.getElementById('statF2').textContent=filtro2.length.toLocaleString('pt-BR');
+      document.getElementById('statCombined').textContent=combined.length.toLocaleString('pt-BR');
+
+      document.getElementById('statsBar').classList.add('visible');
+      document.getElementById('actionsBar').style.display='flex';
+      setView('all');
+      hideLoading();
+    },
+    error:function(err){hideLoading();showAlert('Erro ao ler o arquivo: '+err.message)}
+  });
+}
+
+function setView(view){
+  currentView=view;
+  ['tabAll','tabF1','tabF2'].forEach(function(id){document.getElementById(id).className='tab-btn'});
+  var rows,title;
+  if(view==='f1'){rows=filtro1.map(function(r){return Object.assign({},r,{__FILTRO:'Filtro 1'})});title='Filtro 1 – Reverter = Sim';document.getElementById('tabF1').className='tab-btn active-f1'}
+  else if(view==='f2'){rows=filtro2.map(function(r){return Object.assign({},r,{__FILTRO:'Filtro 2'})});title='Filtro 2 – Business / Promise ≥ 25/06';document.getElementById('tabF2').className='tab-btn active-f2'}
+  else{rows=combined;title='Todos os pacotes segregados (F1 + F2)';document.getElementById('tabAll').className='tab-btn active-all'}
+  document.getElementById('tableTitle').textContent=title;
+  document.getElementById('tableCount').textContent=rows.length.toLocaleString('pt-BR')+' pacotes';
+  renderTable(rows);
+  document.getElementById('tableWrap').classList.add('visible');
+}
+
+function renderTable(rows){
+  var cols=['__FILTRO'].concat(PREVIEW_COLS.filter(function(c){return headers.indexOf(c)>=0}));
+  document.getElementById('tableHead').innerHTML='<tr>'+cols.map(function(c){return'<th>'+(c==='__FILTRO'?'FILTRO':c)+'</th>'}).join('')+'</tr>';
+  var slice=rows.slice(0,600);
+  document.getElementById('tableBody').innerHTML=slice.map(function(r){
+    return'<tr>'+cols.map(function(c){
+      var v=r[c]!=null?r[c]:'';
+      if(c==='__FILTRO')return'<td><span class="badge '+(v==='Filtro 1'?'b-f1':'b-f2')+'">'+v+'</span></td>';
+      if(c==='Reverter')return'<td><span class="badge '+(String(v).toLowerCase()==='sim'?'b-sim':'b-nao')+'">'+v+'</span></td>';
+      if(c==='Tipo_Endereco')return'<td><span class="badge '+(v==='business'?'b-business':'')+'">'+v+'</span></td>';
+      if(c==='CICLO FINAL')return'<td><span class="badge b-am">'+v+'</span></td>';
+      return'<td>'+v+'</td>';
+    }).join('')+'</tr>';
+  }).join('')+(rows.length>600?'<tr><td colspan="'+cols.length+'" style="text-align:center;color:#64748b;padding:14px">… mais '+(rows.length-600).toLocaleString('pt-BR')+' linhas — exporte o CSV para ver tudo</td></tr>':'');
+}
+
+function exportCSV(target){
+  var rows,filename;
+  if(target==='f1'){rows=filtro1.map(function(r){return{'Id_Unidad':r['Id_Unidad']}});filename='A30_Filtro1_Reverter_Sim.csv'}
+  else if(target==='f2'){rows=filtro2.map(function(r){return{'Id_Unidad':r['Id_Unidad']}});filename='A30_Filtro2_Business_Promise.csv'}
+  else{
+    // F1 + F2 num único arquivo, somente Id_Unidad
+    rows=[];
+    filtro1.forEach(function(r){rows.push({'Id_Unidad':r['Id_Unidad']})});
+    filtro2.forEach(function(r){rows.push({'Id_Unidad':r['Id_Unidad']})});
+    filename='A30_Filtros_1_e_2_Combinados.csv';
+  }
+  if(!rows.length){showAlert('Nenhum dado para exportar.');return}
+  var exportHeaders=["Id_Unidad"];
+  var csv=Papa.unparse(rows,{columns:exportHeaders});
+  var BOM='\uFEFF';
+  var blob=new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
